@@ -7,11 +7,13 @@
 <style>
 :root {
   --bg: #0d1016; --frame: #050608; --panel: #11151c; --line: #222835; --text: #d6dae2;
-  --muted: #7c8494; --dim: #545b69; --accent: #e3a55a; --neutral: #5a6170;
+  --muted: #7c8494; --dim: #545b69; --neutral: #5a6170;
+  --accent: #dfe3ea; /* the page's own highlight has no hue, so it never reads as a category (amber was Compute's) */
+  --mark: #8b94a5; /* the panel's bars: lighter than the previous period, quieter than the text */
   --compute: oklch(0.72 0.11 55); --storage: oklch(0.72 0.11 250); --database: oklch(0.72 0.11 355);
   --network: oklch(0.72 0.11 185); --ai: oklch(0.72 0.11 295); --analytics: oklch(0.72 0.11 95);
   --ops: oklch(0.72 0.11 145); --other: oklch(0.66 0.02 260); /* one lightness and chroma: no colour shouts */
-  --up: #e5534b; --down: #3fb68b; --advisor: #4fa3e0;
+  --up: #e5534b; --down: #5aa2f0; /* red and blue, not red and green: colour-blind readers can tell them apart */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--frame); color: var(--text);
@@ -88,7 +90,7 @@ aside { grid-column: 2; grid-row: 2 / 4; border-left: 1px solid var(--line); bac
 .big { font-size: 34px; font-weight: 300; margin-top: 10px; letter-spacing: -.5px; }
 .big small { font-size: 14px; color: var(--muted); margin-left: 2px; }
 .bar { height: 4px; background: #1d2330; border-radius: 2px; margin-top: 8px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--accent); }
+.bar i { display: block; height: 100%; background: var(--mark); }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; margin-top: 14px; }
 .stats div span { display: block; color: var(--dim); font-size: 10px; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 2px; }
 .stats div { font-size: 13px; }
@@ -110,11 +112,16 @@ aside { grid-column: 2; grid-row: 2 / 4; border-left: 1px solid var(--line); bac
 /* Advisor's header waits at the bottom of the panel while the lists scroll; a click scrolls to its tips */
 .advh { position: sticky; bottom: 0; margin-top: auto; border-top: 1px solid var(--line); padding: 12px 0 10px;
   background: var(--panel); cursor: pointer; z-index: 1; }
-.advh b { color: var(--advisor); }
+.advh b { color: var(--accent); }
 .advh + section { margin-top: -14px; }
+/* rows scrolling under the header fade out instead of being cut mid-line (the border is outside the padding box) */
+.advh::before { content: ""; position: absolute; left: 0; right: 0; bottom: calc(100% + 1px); height: 22px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--panel)); }
 /* on a tall screen the selection stays in view too; on a laptop it would leave the lists too little room */
 @media (min-height: 900px) { #side > section:first-child { position: sticky; top: -14px; padding-top: 14px; margin-top: -14px;
-  background: var(--panel); z-index: 1; } }
+  background: var(--panel); z-index: 1; }
+  #side > section:first-child::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px;
+    pointer-events: none; background: linear-gradient(var(--panel), transparent); } } /* rows fade in under it, as at the bottom */
 .note { color: var(--dim); margin-top: 9px; }
 .showall { color: var(--muted); margin-top: 10px; font-size: 11px; cursor: pointer; }
 .showall:hover { color: var(--text); }
@@ -144,6 +151,7 @@ kbd { font: 10.5px ui-monospace, Menlo, monospace; color: var(--muted); border: 
   .app { grid-template-columns: 1fr; grid-template-rows: auto auto 60vh auto auto; overflow-y: auto; }
   aside { grid-column: 1; grid-row: 4; border-left: 0; border-top: 1px solid var(--line); }
   .advh, #side > section:first-child { position: static; } /* stacked, the page scrolls, not the panel */
+  .advh::before { display: none; }
   footer { grid-row: 5; }
   header { flex-wrap: wrap; } .legend { display: none; }
 }
@@ -388,20 +396,39 @@ function fold(nodes, w, h) {
   }
   return [...nodes.slice(0, i), more].sort((a, b) => b.cur - a.cur);
 }
+// a box shows its name when the whole name fits or enough of it to read: "Stan…" or "M…" only adds noise,
+// and the tooltip names every box anyway
+const FONT = '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif', MIN_CHARS = 8;
+let ctx2d;
+function textWidth(s, px, bold = false) {
+  if (ctx2d === undefined) ctx2d = document.createElement("canvas").getContext?.("2d") || null;
+  if (!ctx2d) return s.length * px * (bold ? 0.6 : 0.56); // no canvas (the tests' DOM): a little wider than real text
+  ctx2d.font = `${bold ? "600 " : ""}${px}px ${FONT}`;
+  return ctx2d.measureText(s).width;
+}
+const fits = (s, room, px = 12, bold = false) => textWidth(s, px, bold) <= room
+  || (s.length > MIN_CHARS && textWidth(s.slice(0, MIN_CHARS) + "…", px, bold) <= room);
+// most Azure meters start with "Standard"; on a box the rest of the name says more (tooltip and panel keep it all)
+const boxName = n => (n.dim === "Meter" ? n.name.replace(/^Standard\s+(?=\S)/, "") : n.name);
 function drawLeaf(frag, r) {
   const tiny = r.w < 14 || r.h < 10;
   const el = cell("leaf" + (tiny ? " tiny" : "") + (r.n.more ? " more" : ""), r.n, r, 1);
-  if (r.w > 42 && r.h > 17) el.innerHTML = `<div class="n">${esc(r.n.name)}</div>` + (r.h > 32 ? `<div class="v">${money(r.n.cur)}</div>` : "");
+  const name = boxName(r.n), value = money(r.n.cur), room = r.w - 12; // 1px gap and 5px padding a side
+  if (r.h > 17 && fits(name, room))
+    el.innerHTML = `<div class="n">${esc(name)}</div>` + (r.h > 32 && fits(value, room, 10.5) ? `<div class="v">${value}</div>` : "");
   frag.append(el);
 }
 function drawGroup(frag, r) {
   const el = cell("group", r.n, r, 1.5);
   frag.append(el);
-  if (r.w > 46 && r.h > 40) {
-    el.innerHTML = `<div class="gh"><span class="n">${esc(r.n.name)}</span><span class="v">${money(r.n.cur)}</span></div>`;
+  const value = money(r.n.cur), room = r.w - 13, name = `<span class="n">${esc(r.n.name)}</span>`;
+  const named = fits(r.n.name, room, 12, true);
+  if (r.w > 46 && r.h > 40) { // the name gives up the amount before it gets cut short; the boxes below have their own
+    const both = fits(r.n.name, room - textWidth(value, 10.5) - 6, 12, true);
+    el.innerHTML = `<div class="gh">${both ? name + `<span class="v">${value}</span>` : named ? name : ""}</div>`;
     for (const c of squarify(fold(r.n.children, r.w - 8, r.h - 25), r.x + 4, r.y + 21, r.w - 8, r.h - 25)) drawLeaf(frag, c);
-  } else if (r.w > 30 && r.h > 16) {
-    el.innerHTML = `<div class="gh"><span class="n">${esc(r.n.name)}</span></div>`;
+  } else if (r.h > 16 && named) {
+    el.innerHTML = `<div class="gh">${name}</div>`;
   }
 }
 // zoom holds a group key or null; "" is a real key (the no-region group), so never test it for truthiness
@@ -461,7 +488,8 @@ function renderChrome(base) {
     : state.more ? `<a data-up>all ${esc(DIM[A].many)}</a><span>/</span><a data-group>${esc(base.name)}</a><span>/</span><span class="cur">${moreCount} smaller ${esc(DIM[B].many)}</span>`
     : `<a data-up>all ${esc(DIM[A].many)}</a><span>/</span><span class="cur">${esc(base.name)}</span>`);
   const leaves = root.children.reduce((s, g) => s + g.children.length, 0);
-  const todoKey = marks().size ? '<span><i class="todo"></i>to-do</span>' : ""; // first, so a narrow legend clips "Other" instead
+  const todoKey = marks().size // first, so a narrow legend clips "Other" instead
+    ? '<span title="boxes behind the rows in Worth a look"><i class="todo"></i>flagged</span>' : "";
   const legend = todoKey + (state.change
     ? [["--down", "down"], ["--neutral", "flat"], ["--up", "up / new"]].map(([c, l]) => `<span><i style="background:var(${c})"></i>${l}</span>`).join("")
     : CATS.map(([k, l]) => `<span><i style="background:var(--${k})"></i>${l}</span>`).join(""));
@@ -493,7 +521,7 @@ function spark(n) {
   const max = Math.max(...n.daily, 0.0001), bw = 100 / N;
   const bars = Array.from(n.daily, (v, i) => {
     const h = Math.max(0, (v / max) * 44);
-    return `<rect x="${(i * bw).toFixed(2)}" y="${(46 - h).toFixed(2)}" width="${(bw * 0.7).toFixed(2)}" height="${h.toFixed(2)}" fill="${i < SPLIT ? "#3a4252" : "var(--accent)"}"/>`;
+    return `<rect x="${(i * bw).toFixed(2)}" y="${(46 - h).toFixed(2)}" width="${(bw * 0.7).toFixed(2)}" height="${h.toFixed(2)}" fill="${i < SPLIT ? "#3a4252" : "var(--mark)"}"/>`;
   }).join("");
   return `<div class="spark"><svg viewBox="0 0 100 46" preserveAspectRatio="none">${bars}</svg>
     <div class="axis"><span>${day(DATA.days[0])}</span><span>previous ${DAYS}d | last ${DAYS}d</span><span>${day(DATA.days[N - 1])}</span></div></div>`;
@@ -520,7 +548,7 @@ function renderSide() {
   const v = DATA.views[state.view], [A, B] = v.dims;
   const d = n.cur - n.prev, share = grand > 0 ? n.cur / grand : 0;
   const change = n.prev < 0.01 ? (n.cur > 0 ? `<b class="upc">new</b>` : "–")
-    : `<b class="${d > 0 ? "upc" : "downc"}">${d > 0 ? "+" : ""}${pct(d / n.prev)}</b> <b style="color:var(--dim)">${d > 0 ? "+" : ""}${money(d)}</b>`;
+    : `<b class="${d > 0 ? "upc" : d < 0 ? "downc" : ""}">${d > 0 ? "+" : ""}${pct(d / n.prev)}</b> <b style="color:var(--dim)">${d > 0 ? "+" : ""}${money(d)}</b>`;
   const path = n.kind === "leaf" ? (n.full.startsWith("/") ? n.full : `${n.parent.name} / ${n.full}`)
     : n.kind === "group" ? n.full : `${DIM[A].many} → ${DIM[B].many}`;
   const kind = n.kind === "root" ? "whole bill" : n.more ? `${n.more} ${DIM[n.dim].many}` : DIM[n.dim].one;
@@ -533,15 +561,17 @@ function renderSide() {
     : `<div><span>kind</span>${esc(kind)}</div>
       <div><span>category</span>${n.kind === "root" ? "–" : (CATS.find(c => c[0] === category(n)) || [, "–"])[1]}</div>`;
 
+  // the whole bill is 100% of itself, and the header already gives its credits: say neither twice
+  const bill = n.kind === "root" && !narrowed();
   let html = `<section><div class="h">Selection</div>
     <div class="sel-name">${portalLink(n, esc(title))}</div><div class="sel-path">${esc(path)}</div>
-    <div class="big">${bigMoney(n.cur)}</div><div style="color:var(--dim)">last ${DAYS} days · ${period()}</div>${creditNote(n, "div")}
-    <div class="bar"><i style="width:${Math.min(100, share * 100)}%"></i></div>
+    <div class="big">${bigMoney(n.cur)}</div><div style="color:var(--dim)">last ${DAYS} days · ${period()}</div>${n.kind === "root" ? "" : creditNote(n, "div")}
+    ${bill ? "" : `<div class="bar"><i style="width:${Math.min(100, share * 100)}%"></i></div>`}
     <div class="stats">
-      <div><span>of bill</span>${pct(share)}</div>
+      ${bill ? "" : `<div><span>of bill</span>${pct(share)}</div>`}
       <div><span>vs prev ${DAYS}d</span>${change}</div>
       <div><span>per day</span>${money(n.cur / DAYS)}</div>
-      <div><span>monthly pace</span>${money((n.cur / DAYS) * 30.4)}</div>
+      ${F ? "" : `<div><span>monthly pace</span>${money((n.cur / DAYS) * 30.4)}</div>`}
       ${tail}
     </div>${spark(n)}${n.kind === "root" ? GAPS.map(w => `<div class="note">${esc(w)}</div>`).join("") : ""}</section>`;
 
@@ -604,7 +634,7 @@ function advisorPanel() {
   const top = state.expanded.recs ? recs : recs.slice(0, SHOWN_RECS);
   // the header is the aside's own child, so it can stick to the bottom while the lists above it scroll
   return `<div class="advh h" data-adv role="button" tabindex="0">Advisor <b>${recs.length} cost tip${recs.length > 1 ? "s" : ""}</b></div><section>` +
-    top.map((r, i) => row(`data-rec="${i}"`, "var(--advisor)", r.problem, r.solution || r.problem,
+    top.map((r, i) => row(`data-rec="${i}"`, "var(--accent)", r.problem, r.solution || r.problem,
       r.annual_savings ? money(r.annual_savings, sym(r.currency || DATA.currency)) + "/yr" : "–", null, esc(tipLine(r)),
       [r.resource_name, r.sku, r.region, Object.hasOwn(TERM, r.term) && TERM[r.term]].filter(Boolean).join(" · "))).join("") +
     showAll("recs", recs.length, SHOWN_RECS) + missing + `</section>`;
@@ -636,8 +666,8 @@ function biggestDrops() {
 }
 
 // ---------- worth a look: the hints aztree.py computed (the export's `hints`, in order), placed on the service view
-const HINT_COLOR = { grower: "var(--up)", spike: "var(--up)", pit: "var(--accent)", devtest: "var(--accent)", steady: "var(--advisor)",
-  idle: "var(--accent)" };
+// red marks spend that grew; every other kind of row is a plain tag
+const HINT_COLOR = { grower: "var(--up)", spike: "var(--up)" };
 let _hints;
 function worthALook() {
   if (_hints) return _hints;
@@ -674,12 +704,14 @@ function hintText(h) {
   return h.reason || "";
 }
 
-// the boxes the to-dos in Worth a look are about, in the view each row jumps to: hatched on the map
+// the boxes the to-dos in Worth a look are about, in the view each row jumps to: hatched on the map.
+// Only the rows the panel shows: collapsed, the biggest few, so the map stays calm; "show all" hatches the rest.
 const _marks = {};
 function marks() {
-  if (_marks[state.view]) return _marks[state.view];
-  const m = new Set();
-  for (const x of worthALook()) {
+  const key = state.view + (state.expanded.hints ? " all" : "");
+  if (_marks[key]) return _marks[key];
+  const m = new Set(), all = worthALook();
+  for (const x of state.expanded.hints ? all : all.slice(0, SHOWN_HINTS)) {
     const h = x.h;
     if (x.view !== state.view) continue;
     if (h.kind === "pit") m.add(h.service + "\u0000" + h.meter);
@@ -687,7 +719,7 @@ function marks() {
     else if (h.kind === "idle") for (const r of h.resources) m.add(r.group + "\u0000" + r.id);
     else if (h.kind === "devtest") m.add(h.group + "\u0000*");
   }
-  return (_marks[state.view] = m);
+  return (_marks[key] = m);
 }
 const isTodo = n => n.kind === "leaf" && !n.more && (marks().has(n.parent.key + "\u0000" + n.key) || marks().has(n.parent.key + "\u0000*"));
 
@@ -792,7 +824,12 @@ $("#filter").addEventListener("input", e => { state.filter = e.target.value.trim
 $("#side").addEventListener("click", e => {
   if (e.target.closest("[data-adv]")) { $("#side").scrollTop = $("#side").scrollHeight; return; }
   const more = e.target.closest("[data-more]");
-  if (more) { state.expanded[more.dataset.more] = !state.expanded[more.dataset.more]; renderSide(); return; }
+  if (more) { // opening Worth a look hatches the boxes of its other rows, so that list redraws the map too
+    const list = more.dataset.more;
+    state.expanded[list] = !state.expanded[list];
+    list === "hints" ? render() : renderSide();
+    return;
+  }
   const it = e.target.closest("[data-idle]");
   if (it) {
     if (e.target.closest("a")) return; // ↗ opens the portal; the map stays put

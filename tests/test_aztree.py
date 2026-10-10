@@ -1193,7 +1193,7 @@ console.log(JSON.stringify({
   drawn: cells().map(e => ({ cls: e.className, name: e._n?.name })),
   history: calls, animations: animations.length, pressed,
   leafBoxes: made.filter(e => e.className.split(" ").includes("leaf"))
-    .map(e => ({ cls: e.className, name: e._n.name, w: parseFloat(e.style.width), h: parseFloat(e.style.height) })),
+    .map(e => ({ cls: e.className, name: e._n.name, w: parseFloat(e.style.width), h: parseFloat(e.style.height), html: e.innerHTML })),
 }));
 """
 
@@ -1789,9 +1789,26 @@ class Batch1Test(unittest.TestCase):
     def test_page_says_what_credits_the_total_includes(self):
         page = ViewerTest.run_page(self, make_data(self.REFUNDED), "service")
         self.assertIn("-$2.00 credits &amp; refunds", page["sub"])
-        self.assertIn("-$2.00 credits &amp; refunds", page["side"])
+        self.assertNotIn("credits", page["side"])  # the whole bill's credits are said once, in the header
         plain = ViewerTest.run_page(self, make_data([("Storage", "LRS", [5] * 6)]), "service")
         self.assertNotIn("credits", plain["sub"])
+        mixed = make_data([("Azure Cosmos DB", "100 RU/s", [5] * 6), ("Azure Cosmos DB", "Reservation refund", [0, 0, 0, -2, 0, 0])])
+        side = ViewerTest.run_page(self, mixed, "service", click={"map": "click", "name": "Cosmos DB"})["side"]
+        self.assertIn("-$2.00 credits &amp; refunds", side)  # a selected service still says its own
+
+    @unittest.skipUnless(aztree.shutil.which("node"), "node not installed")
+    def test_the_whole_bill_shows_one_projection_and_no_share_of_itself(self):
+        f = {"month": "2026-09", "actual": 150.0, "forecast": 85.0, "total": 235.0}
+        data = make_data([("Storage", "LRS", [5] * 6)], forecast=f)
+        side = ViewerTest.run_page(self, data, "service")["side"]
+        self.assertIn("Sep forecast", side)
+        for gone in ("monthly pace", "of bill", 'class="bar"'):
+            self.assertNotIn(gone, side)
+        box = ViewerTest.run_page(self, data, "service", click={"map": "click", "name": "LRS"})["side"]
+        for back in ("monthly pace", "of bill", 'class="bar"'):
+            self.assertIn(back, box)
+        self.assertIn('<b class="">0%</b>', box)  # flat spend isn't coloured as a drop
+        self.assertIn("monthly pace", ViewerTest.run_page(self, make_data([("Storage", "LRS", [5] * 6)]), "service")["side"])
 
     DROPPED = [("Storage", "Hot LRS Data Stored", [5] * 6), ("Storage", "Old disk", [10, 10, 10, 0, 0, 0]),
                ("SQL Database", "vCore", [20, 20, 20, 5, 5, 5])]
@@ -2447,11 +2464,25 @@ class MapLookTest(unittest.TestCase):
         self.assertEqual(len({h for _, _, h in hued}), 7)
         self.assertIn("other", found)
 
-    def test_boxes_have_no_outline_and_the_selection_is_amber(self):
+    def test_boxes_have_no_outline_and_the_selection_uses_the_accent(self):
         leaf = aztree.re.search(r"\n\.leaf \{([^}]*)\}", TEMPLATE).group(1)
         self.assertNotIn("border", leaf)
         self.assertRegex(TEMPLATE, r"\.cell\.sel \{[^}]*outline: 2px solid var\(--accent\)")
         self.assertNotRegex(TEMPLATE, r"\.leaf:hover \{[^}]*background:")  # the shorthand would wipe a hatch
+
+    def hex_var(self, name):
+        h = aztree.re.search(r"--%s:\s*#([0-9a-f]{6})" % name, TEMPLATE).group(1)
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
+
+    def test_the_accent_has_no_hue_so_it_never_reads_as_a_category(self):
+        rgb = self.hex_var("accent")
+        self.assertLess(max(rgb) - min(rgb), 16, rgb)
+
+    def test_change_colours_are_red_and_blue_not_red_and_green(self):
+        r, g, b = self.hex_var("down")
+        self.assertGreater(b, max(r, g))
+        r, g, b = self.hex_var("up")
+        self.assertGreater(r, max(g, b))
 
     def test_to_dos_are_hatched_where_their_row_jumps(self):
         # a pit (Log Analytics ingestion) and steady spend (SQL vCore, no Advisor) in the service view
@@ -2478,11 +2509,44 @@ class MapLookTest(unittest.TestCase):
         self.assertEqual(len(more), 1)
         self.assertNotIn("todo", more[0]["cls"].split())
 
-    def test_the_legend_has_a_to_do_swatch_in_both_colour_modes(self):
+    def test_the_legend_has_a_flagged_swatch_in_both_colour_modes(self):
         data = make_data([("Log Analytics", "Analytics Logs Data Ingestion", [30] * 6)])
-        self.assertIn('<i class="todo"></i>to-do', self.run_page(data, "service")["sub"])
-        self.assertIn('<i class="todo"></i>to-do', self.run_page(data, "service", click={"press": "c"})["sub"])
-        self.assertNotIn("to-do", self.run_page(data, "region")["sub"])  # nothing hatched there
+        self.assertIn('<i class="todo"></i>flagged', self.run_page(data, "service")["sub"])
+        self.assertIn('<i class="todo"></i>flagged', self.run_page(data, "service", click={"press": "c"})["sub"])
+        self.assertNotIn("flagged", self.run_page(data, "region")["sub"])  # nothing hatched there
+
+    def test_a_box_names_itself_only_when_enough_of_the_name_fits(self):
+        meters = [("Storage", f"Meter number {i:02d}", [2 ** (11 - i)] * 6) for i in range(11)]
+        boxes = self.run_page(make_data(meters), "service")["leafBoxes"]
+        width = lambda s: len(s) * 12 * 0.56  # the page's estimate when there's no canvas, as in this DOM
+        named = {}
+        for b in boxes:
+            room, name = b["w"] - 10, b["name"]
+            named[name] = '<div class="n">' in b["html"]
+            readable = width(name) <= room or width(name[:8] + "…") <= room
+            self.assertEqual(named[name], b["h"] + 2 > 17 and readable, b)
+        self.assertTrue(named["Meter number 00"])
+        self.assertFalse(named["Meter number 07"])  # 63px wide: "Meter n…" at best
+
+    def test_boxes_drop_the_standard_prefix_but_the_tooltip_keeps_it(self):
+        data = make_data([("Bandwidth", "Standard Data Transfer Out", [10] * 6), ("Storage", "Standard", [5] * 6)])
+        page = self.run_page(data, "service", click={"hover": "Standard Data Transfer Out"})
+        html = {b["name"]: b["html"] for b in page["leafBoxes"]}
+        self.assertIn('<div class="n">Data Transfer Out</div>', html["Standard Data Transfer Out"])
+        self.assertIn('<div class="n">Standard</div>', html["Standard"])  # nothing left to show without it
+        self.assertIn("Standard Data Transfer Out", page["tip"])
+
+    def test_only_the_rows_worth_a_look_shows_are_hatched_until_show_all(self):
+        pits = [("Log Analytics", "Analytics Logs Data Ingestion", 80), ("Bandwidth", "Standard Data Transfer Out", 70),
+                ("NAT Gateway", "Standard Data Processed", 60), ("Azure Firewall", "Standard Data Processed", 50),
+                ("Storage", "Standard Page Blob v2 Snapshots", 40), ("Virtual Network", "Standard IPv4 Static Public IP", 30),
+                ("Virtual Machines", "D2 v2", 25)]  # seven pits, biggest first: the panel shows six
+        data = make_data([(s, m, [v] * 6) for s, m, v in pits])
+        hatched = lambda page: {d["name"] for d in page["drawn"] if "todo" in d["cls"].split()}
+        shut = hatched(self.run_page(data, "service"))
+        self.assertIn("Analytics Logs Data Ingestion", shut)
+        self.assertNotIn("D2 v2", shut)
+        self.assertIn("D2 v2", hatched(self.run_page(data, "service", click="[data-more]:hints")))
 
 
 @unittest.skipUnless(aztree.shutil.which("node"), "node not installed")
