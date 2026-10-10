@@ -41,9 +41,9 @@ The page opens in your browser. It shows the last 30 days, compared with the 30 
 
 - **Treemap** of spend by service → meter. Press `2` to group by subscription, `3` by region, `4` by resource group → resource and `5` by tag value → service.
 - **Tag view:** spend by the values of one tag, with untagged spend as its own box and its share of the bill in the header. aztree picks the tag on the most resources; `--tag KEY` picks another. When that share is a tenth of the bill or more, "how to fix" there points to tag inheritance and a tag policy.
-- **Color by change** (`c`): red where spend grew, green where it shrank.
-- **Selection panel:** cost, share of the bill, change vs the previous period, monthly pace and a daily chart. For the whole bill, the last two cells show this month so far and Azure's forecast for the month. The name of a selected subscription, resource group or resource opens it in the Azure portal.
-- **Worth a look:** one list where news and to-dos take turns. The first six show, and "show all" opens the rest. On the map, the boxes a to-do is about have diagonal stripes.
+- **Color by change** (`c`): red where spend grew, blue where it shrank.
+- **Selection panel:** cost, share of the bill, change vs the previous period, monthly pace and a daily chart. For the whole bill there's no share, and when Azure has a forecast for the month, this month so far and that forecast take the place of monthly pace. The name of a selected subscription, resource group or resource opens it in the Azure portal.
+- **Worth a look:** one list where news and to-dos take turns. The first six show, and "show all" opens the rest. On the map, the boxes behind the to-dos the list shows have diagonal stripes, so "show all" stripes the rest.
   - **News** is costs that grew and one-off spikes (a day far above that meter's usual).
   - **To-dos** are known money pits (below) and compute left on all week in dev/test resource groups. When Advisor has no reservation or savings-plan tips, steady spend that a reservation could cut shows up too.
   - **Idle resources** bill while doing nothing, and they count as to-dos. aztree finds them with Azure Resource Graph and lists the ones that cost something in the period. When one check finds several, such as 3 unattached disks, click the row to list them all, each with its cost and a link to the portal. Click a resource in the list to see it on the map.

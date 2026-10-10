@@ -1194,6 +1194,8 @@ console.log(JSON.stringify({
   history: calls, animations: animations.length, pressed,
   leafBoxes: made.filter(e => e.className.split(" ").includes("leaf"))
     .map(e => ({ cls: e.className, name: e._n.name, w: parseFloat(e.style.width), h: parseFloat(e.style.height), html: e.innerHTML })),
+  groupBoxes: made.filter(e => e.className.split(" ").includes("group"))
+    .map(e => ({ name: e._n.name, w: parseFloat(e.style.width), h: parseFloat(e.style.height), html: e.innerHTML })),
 }));
 """
 
@@ -1790,6 +1792,7 @@ class Batch1Test(unittest.TestCase):
         page = ViewerTest.run_page(self, make_data(self.REFUNDED), "service")
         self.assertIn("-$2.00 credits &amp; refunds", page["sub"])
         self.assertNotIn("credits", page["side"])  # the whole bill's credits are said once, in the header
+        self.assertLess(page["sub"].index("credits"), page["sub"].index("meter"))  # beside the total, before what can clip
         plain = ViewerTest.run_page(self, make_data([("Storage", "LRS", [5] * 6)]), "service")
         self.assertNotIn("credits", plain["sub"])
         mixed = make_data([("Azure Cosmos DB", "100 RU/s", [5] * 6), ("Azure Cosmos DB", "Reservation refund", [0, 0, 0, -2, 0, 0])])
@@ -1807,7 +1810,12 @@ class Batch1Test(unittest.TestCase):
         box = ViewerTest.run_page(self, data, "service", click={"map": "click", "name": "LRS"})["side"]
         for back in ("monthly pace", "of bill", 'class="bar"'):
             self.assertIn(back, box)
-        self.assertIn('<b class="">0%</b>', box)  # flat spend isn't coloured as a drop
+        self.assertIn(">0%</b>", box)
+        self.assertNotIn("downc", box)  # flat spend isn't coloured as a drop
+        noise = make_data([("Storage", "LRS", [0.1, 0.2, 0.3, 0.3, 0.2, 0.1])])  # equal sums, float noise between them
+        side = ViewerTest.run_page(self, noise, "service", click={"map": "click", "name": "LRS"})["side"]
+        self.assertIn(">0%</b>", side)
+        self.assertNotIn("downc", side)
         self.assertIn("monthly pace", ViewerTest.run_page(self, make_data([("Storage", "LRS", [5] * 6)]), "service")["side"])
 
     DROPPED = [("Storage", "Hot LRS Data Stored", [5] * 6), ("Storage", "Old disk", [10, 10, 10, 0, 0, 0]),
@@ -2527,6 +2535,22 @@ class MapLookTest(unittest.TestCase):
             self.assertEqual(named[name], b["h"] + 2 > 17 and readable, b)
         self.assertTrue(named["Meter number 00"])
         self.assertFalse(named["Meter number 07"])  # 63px wide: "Meter n…" at best
+
+    def test_a_group_header_gives_up_its_amount_before_cutting_its_name(self):
+        rows = [(f"Azure Long Service Name {i:02d}", "meter", [2 ** (11 - i)] * 6) for i in range(11)]
+        groups = self.run_page(make_data(rows), "service")["groupBoxes"]
+        bold, small = (lambda s: len(s) * 12 * 0.6), (lambda s: len(s) * 10.5 * 0.56)  # the no-canvas estimates
+        kinds = set()
+        for g in groups:
+            room, name = g["w"] - 10, g["name"]  # 5px padding a side
+            amount = aztree.re.search(r'<span class="v">([^<]*)</span>', g["html"])
+            named = 'class="n"' in g["html"]
+            if amount:
+                self.assertLessEqual(bold(name) + 6 + small(amount.group(1)), room, g)  # the whole name fits beside it
+            if named:
+                self.assertTrue(bold(name) <= room or bold(name[:8] + "…") <= room, g)
+            kinds.add((named, bool(amount)))
+        self.assertEqual(kinds, {(True, True), (True, False), (False, False)})
 
     def test_boxes_drop_the_standard_prefix_but_the_tooltip_keeps_it(self):
         data = make_data([("Bandwidth", "Standard Data Transfer Out", [10] * 6), ("Storage", "Standard", [5] * 6)])

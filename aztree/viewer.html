@@ -13,7 +13,7 @@
   --compute: oklch(0.72 0.11 55); --storage: oklch(0.72 0.11 250); --database: oklch(0.72 0.11 355);
   --network: oklch(0.72 0.11 185); --ai: oklch(0.72 0.11 295); --analytics: oklch(0.72 0.11 95);
   --ops: oklch(0.72 0.11 145); --other: oklch(0.66 0.02 260); /* one lightness and chroma: no colour shouts */
-  --up: #e5534b; --down: #5aa2f0; /* red and blue, not red and green: colour-blind readers can tell them apart */
+  --up: #e5534b; --down: #3d8bfd; /* red and blue, not red and green: colour-blind readers can tell them apart */
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--frame); color: var(--text);
@@ -58,7 +58,8 @@ label.chk input { accent-color: var(--accent); margin: 0; }
 #mapbox { margin: 2px 8px 8px 12px; min-height: 0; overflow: hidden; }
 #map { position: relative; height: 100%; transform-origin: 0 0; outline: none; }
 #map:focus-visible { outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: -1px; }
-.cell { position: absolute; overflow: hidden; border-radius: 2px; cursor: pointer; }
+.cell { position: absolute; overflow: hidden; border-radius: 2px; cursor: pointer;
+  font-variant-numeric: normal; } /* the labels are measured on a canvas, which can't draw tabular figures */
 /* disktree's look: no outlines, gaps separate the boxes, a box is a step lighter than its group */
 .leaf { background-color: color-mix(in oklab, var(--c) 32%, var(--bg)); padding: 3px 5px; }
 .leaf:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .55); }
@@ -125,7 +126,7 @@ aside { grid-column: 2; grid-row: 2 / 4; border-left: 1px solid var(--line); bac
 .note { color: var(--dim); margin-top: 9px; }
 .showall { color: var(--muted); margin-top: 10px; font-size: 11px; cursor: pointer; }
 .showall:hover { color: var(--text); }
-.items { margin: 2px 0 8px; padding-left: 10px; border-left: 2px solid var(--c, var(--accent)); }
+.items { margin: 2px 0 8px; padding-left: 10px; border-left: 1px solid var(--line); }
 .items + .hint { border-top: 1px solid var(--line); }
 .item { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 11.5px; cursor: pointer; }
 /* the name keeps its width, the group gives way */
@@ -151,7 +152,7 @@ kbd { font: 10.5px ui-monospace, Menlo, monospace; color: var(--muted); border: 
   .app { grid-template-columns: 1fr; grid-template-rows: auto auto 60vh auto auto; overflow-y: auto; }
   aside { grid-column: 1; grid-row: 4; border-left: 0; border-top: 1px solid var(--line); }
   .advh, #side > section:first-child { position: static; } /* stacked, the page scrolls, not the panel */
-  .advh::before { display: none; }
+  .advh::before, #side > section:first-child::after { display: none; }
   footer { grid-row: 5; }
   header { flex-wrap: wrap; } .legend { display: none; }
 }
@@ -415,7 +416,7 @@ function drawLeaf(frag, r) {
   const el = cell("leaf" + (tiny ? " tiny" : "") + (r.n.more ? " more" : ""), r.n, r, 1);
   const name = boxName(r.n), value = money(r.n.cur), room = r.w - 12; // 1px gap and 5px padding a side
   if (r.h > 17 && fits(name, room))
-    el.innerHTML = `<div class="n">${esc(name)}</div>` + (r.h > 32 && fits(value, room, 10.5) ? `<div class="v">${value}</div>` : "");
+    el.innerHTML = `<div class="n">${esc(name)}</div>` + (r.h > 32 && textWidth(value, 10.5) <= room ? `<div class="v">${value}</div>` : "");
   frag.append(el);
 }
 function drawGroup(frag, r) {
@@ -424,7 +425,7 @@ function drawGroup(frag, r) {
   const value = money(r.n.cur), room = r.w - 13, name = `<span class="n">${esc(r.n.name)}</span>`;
   const named = fits(r.n.name, room, 12, true);
   if (r.w > 46 && r.h > 40) { // the name gives up the amount before it gets cut short; the boxes below have their own
-    const both = fits(r.n.name, room - textWidth(value, 10.5) - 6, 12, true);
+    const both = textWidth(r.n.name, 12, true) <= room - textWidth(value, 10.5) - 6;
     el.innerHTML = `<div class="gh">${both ? name + `<span class="v">${value}</span>` : named ? name : ""}</div>`;
     for (const c of squarify(fold(r.n.children, r.w - 8, r.h - 25), r.x + 4, r.y + 21, r.w - 8, r.h - 25)) drawLeaf(frag, c);
   } else if (r.h > 16 && named) {
@@ -505,8 +506,9 @@ function renderChrome(base) {
     ? `<span title="spend on resources without the ${esc(TAG)} tag">untagged ${money(UNTAGGED)} (${pct(grand > 0 ? UNTAGGED / grand : 0)} of bill)${FIX ? ` · <abbr title="${esc(FIX)}">how to fix</abbr>` : ""}</span>` : "";
   const purchases = DATA.commitment_purchases >= 0.01
     ? `<span title="--metric AmortizedCost spreads them over their term">reservation and savings plan purchases ${money(DATA.commitment_purchases)}, booked the day they were bought</span>` : "";
-  $("#sub").innerHTML = `<span><b>${money(root.cur)}</b> · ${period()}</span><span>${root.children.length} ${esc(DIM[A].many)} · ${leaves} ${esc(DIM[B].many)}</span>
-    ${MIXED}${GAPS_NOTE}${purchases}${fallback}${untagged}${creditNote(root, "span")}${readout}<div class="legend">${legend}</div>`;
+  // the credits sit next to the total they're part of; the header clips from the right, so that's also where they stay seen
+  $("#sub").innerHTML = `<span><b>${money(root.cur)}</b> · ${period()}</span>${creditNote(root, "span")}<span>${root.children.length} ${esc(DIM[A].many)} · ${leaves} ${esc(DIM[B].many)}</span>
+    ${MIXED}${GAPS_NOTE}${purchases}${fallback}${untagged}${readout}<div class="legend">${legend}</div>`;
 }
 
 // a subscription with too many resources gets one total per resource and period, so no daily chart in that view
@@ -546,23 +548,23 @@ const portalLink = (n, html) => {
 function renderSide() {
   const n = state.sel || zoomed() || root;
   const v = DATA.views[state.view], [A, B] = v.dims;
-  const d = n.cur - n.prev, share = grand > 0 ? n.cur / grand : 0;
+  const d = Math.abs(n.cur - n.prev) < 0.005 ? 0 : n.cur - n.prev, share = grand > 0 ? n.cur / grand : 0; // sub-cent is noise
   const change = n.prev < 0.01 ? (n.cur > 0 ? `<b class="upc">new</b>` : "–")
-    : `<b class="${d > 0 ? "upc" : d < 0 ? "downc" : ""}">${d > 0 ? "+" : ""}${pct(d / n.prev)}</b> <b style="color:var(--dim)">${d > 0 ? "+" : ""}${money(d)}</b>`;
+    : `<b${d ? ` class="${d > 0 ? "upc" : "downc"}"` : ""}>${d > 0 ? "+" : ""}${pct(d / n.prev)}</b> <b style="color:var(--dim)">${d > 0 ? "+" : ""}${money(d)}</b>`;
   const path = n.kind === "leaf" ? (n.full.startsWith("/") ? n.full : `${n.parent.name} / ${n.full}`)
     : n.kind === "group" ? n.full : `${DIM[A].many} → ${DIM[B].many}`;
   const kind = n.kind === "root" ? "whole bill" : n.more ? `${n.more} ${DIM[n.dim].many}` : DIM[n.dim].one;
   const title = n.kind === "root" ? (narrowed() ? `“${state.filter}”` : "Everything") : n.name;
+  // the whole bill is 100% of itself, has no category, and the header already gives its credits: say none of it
+  const bill = n.kind === "root" && !narrowed();
   // Azure's own forecast for this calendar month, on the whole bill only: it knows nothing of views or filters
   const F = n.kind === "root" && !narrowed() ? DATA.forecast : null;
   const mon = F && new Date(F.month + "-01T00:00:00").toLocaleDateString("en-US", { month: "short" });
   const tail = F
     ? `<div><span>${mon} so far</span>${money(F.actual)}</div><div><span>${mon} forecast</span>${money(F.total)}</div>`
-    : `<div><span>kind</span>${esc(kind)}</div>
-      <div><span>category</span>${n.kind === "root" ? "–" : (CATS.find(c => c[0] === category(n)) || [, "–"])[1]}</div>`;
+    : `<div><span>kind</span>${esc(kind)}</div>` + (bill ? ""
+      : `<div><span>category</span>${n.kind === "root" ? "–" : (CATS.find(c => c[0] === category(n)) || [, "–"])[1]}</div>`);
 
-  // the whole bill is 100% of itself, and the header already gives its credits: say neither twice
-  const bill = n.kind === "root" && !narrowed();
   let html = `<section><div class="h">Selection</div>
     <div class="sel-name">${portalLink(n, esc(title))}</div><div class="sel-path">${esc(path)}</div>
     <div class="big">${bigMoney(n.cur)}</div><div style="color:var(--dim)">last ${DAYS} days · ${period()}</div>${n.kind === "root" ? "" : creditNote(n, "div")}
